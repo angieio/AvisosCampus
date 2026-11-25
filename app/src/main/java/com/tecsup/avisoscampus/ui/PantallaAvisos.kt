@@ -6,6 +6,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -14,6 +15,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -44,6 +46,7 @@ fun PantallaAvisos() {
     val fabrica = remember { AvisosViewModelFactory(AvisosRepositoryMemoria()) }
     val vm: AvisosViewModel = viewModel(factory = fabrica)
     val permiso by vm.permiso.collectAsState()
+    val faltan by vm.faltan.collectAsState()
 
     val lanzador = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -93,6 +96,11 @@ fun PantallaAvisos() {
                     }
                 }
             )
+            TarjetaRecordatorio(
+                faltan = faltan,
+                alRecordar = { vm.recordarEn() },
+                alCancelar = vm::cancelarRecordatorio
+            )
             TarjetaAvisos(alMostrarAviso = vm::avisarAhora)
         }
     }
@@ -130,6 +138,47 @@ private fun TarjetaPermiso(
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             ) {
                 Text("Permitir notificaciones")
+            }
+        }
+    }
+}
+
+@Composable
+private fun TarjetaRecordatorio(
+    faltan: Int?,
+    alRecordar: () -> Unit,
+    alCancelar: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = "Recordatorio",
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.titleSmall
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+            ) {
+                Button(onClick = alRecordar, enabled = faltan == null) {
+                    Text("Recordar en 10 s")
+                }
+                OutlinedButton(onClick = alCancelar, enabled = faltan != null) {
+                    Text("Cancelar")
+                }
+            }
+            if (faltan != null) {
+                Text(
+                    text = "Faltan $faltan s",
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
             }
         }
     }
