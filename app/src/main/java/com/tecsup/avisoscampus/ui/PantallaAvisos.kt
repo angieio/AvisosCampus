@@ -1,8 +1,17 @@
 package com.tecsup.avisoscampus.ui
 
-import androidx.compose.foundation.layout.Box
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -10,13 +19,44 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tecsup.avisoscampus.R
+import com.tecsup.avisoscampus.data.AvisosRepositoryMemoria
+import com.tecsup.avisoscampus.model.PermisoUi
+import com.tecsup.avisoscampus.notificacion.Notificador
+import com.tecsup.avisoscampus.viewmodel.AvisosViewModel
+import com.tecsup.avisoscampus.viewmodel.AvisosViewModelFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PantallaAvisos() {
+    val contexto = LocalContext.current
+    val fabrica = remember { AvisosViewModelFactory(AvisosRepositoryMemoria()) }
+    val vm: AvisosViewModel = viewModel(factory = fabrica)
+    val permiso by vm.permiso.collectAsState()
+
+    val lanzador = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { concedido ->
+        vm.permisoRespondido(concedido)
+    }
+
+    LaunchedEffect(Unit) {
+        if (Notificador.tienePermiso(contexto)) {
+            vm.permisoRespondido(true)
+        }
+    }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
@@ -30,12 +70,61 @@ fun PantallaAvisos() {
             )
         }
     ) { innerPadding ->
-        Box(modifier = Modifier.padding(innerPadding))
+        TarjetaPermiso(
+            permiso = permiso,
+            modifier = Modifier
+                .padding(innerPadding)
+                .padding(16.dp),
+            alPedirPermiso = {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    lanzador.launch(Manifest.permission.POST_NOTIFICATIONS)
+                } else {
+                    vm.permisoRespondido(true)
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun TarjetaPermiso(
+    permiso: PermisoUi,
+    modifier: Modifier = Modifier,
+    alPedirPermiso: () -> Unit
+) {
+    val (estado, color) = when (permiso) {
+        PermisoUi.SinPedir -> "Sin pedir" to MaterialTheme.colorScheme.onSurfaceVariant
+        PermisoUi.Concedido -> "Permitido" to Color(0xFF216A37)
+        PermisoUi.Denegado -> "Denegado" to MaterialTheme.colorScheme.error
+    }
+
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = "Permiso de notificaciones",
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.titleSmall
+            )
+            Text(text = estado, color = color)
+            Button(
+                onClick = alPedirPermiso,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            ) {
+                Text("Permitir notificaciones")
+            }
+        }
     }
 }
 
 /*
-// Dentro de PantallaAvisos (ya viene hecho):
+
 val contexto = LocalContext.current
 LaunchedEffect(Unit) {
     vm.eventos.collect { aviso ->
