@@ -53,6 +53,7 @@ fun PantallaAvisos() {
     val contexto = LocalContext.current
     val fabrica = remember { AvisosViewModelFactory(AvisosRepositoryMemoria()) }
     val vm: AvisosViewModel = viewModel(factory = fabrica)
+    val avisos by vm.avisos.collectAsState()
     val permiso by vm.permiso.collectAsState()
     val faltan by vm.faltan.collectAsState()
     val escuchando by vm.escuchandoAvion.collectAsState()
@@ -128,6 +129,7 @@ fun PantallaAvisos() {
             )
             TarjetaAvisos(alMostrarAviso = vm::avisarAhora)
             TarjetaReceptor(escuchando = escuchando, alCambiar = vm::cambiarEscucha)
+            HistorialAvisos(avisos)
         }
     }
 }
