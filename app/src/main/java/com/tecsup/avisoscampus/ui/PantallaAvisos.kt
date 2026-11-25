@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -55,6 +56,7 @@ fun PantallaAvisos() {
     val vm: AvisosViewModel = viewModel(factory = fabrica)
     val avisos by vm.avisos.collectAsState()
     val permiso by vm.permiso.collectAsState()
+    val mensaje by vm.mensaje.collectAsState()
     val faltan by vm.faltan.collectAsState()
     val escuchando by vm.escuchandoAvion.collectAsState()
 
@@ -72,8 +74,9 @@ fun PantallaAvisos() {
 
     LaunchedEffect(vm, contexto) {
         vm.eventos.collect { aviso ->
-            Notificador.mostrar(contexto, aviso)
-            // TODO Paso 8: si no se mostró, avisar al ViewModel.
+            if (!Notificador.mostrar(contexto, aviso)) {
+                vm.noSePudoMostrar()
+            }
         }
     }
 
@@ -122,6 +125,13 @@ fun PantallaAvisos() {
                     }
                 }
             )
+            mensaje?.let { texto ->
+                AvisoPermisoDenegado(texto) {
+                    val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                        .putExtra(Settings.EXTRA_APP_PACKAGE, contexto.packageName)
+                    contexto.startActivity(intent)
+                }
+            }
             TarjetaRecordatorio(
                 faltan = faltan,
                 alRecordar = { vm.recordarEn() },
@@ -258,6 +268,27 @@ private fun TarjetaReceptor(escuchando: Boolean, alCambiar: (Boolean) -> Unit) {
             ) {
                 Text("Escuchar el modo avión", modifier = Modifier.weight(1f))
                 Switch(checked = escuchando, onCheckedChange = alCambiar)
+            }
+        }
+    }
+}
+
+@Composable
+private fun AvisoPermisoDenegado(mensaje: String, alAbrirAjustes: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer,
+            contentColor = MaterialTheme.colorScheme.onErrorContainer
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(mensaje)
+            OutlinedButton(onClick = alAbrirAjustes) {
+                Text("Abrir ajustes")
             }
         }
     }
