@@ -57,6 +57,13 @@ fun PantallaAvisos() {
         }
     }
 
+    LaunchedEffect(vm, contexto) {
+        vm.eventos.collect { aviso ->
+            Notificador.mostrar(contexto, aviso)
+            // TODO Paso 8: si no se mostró, avisar al ViewModel.
+        }
+    }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
@@ -70,19 +77,24 @@ fun PantallaAvisos() {
             )
         }
     ) { innerPadding ->
-        TarjetaPermiso(
-            permiso = permiso,
+        Column(
             modifier = Modifier
                 .padding(innerPadding)
                 .padding(16.dp),
-            alPedirPermiso = {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    lanzador.launch(Manifest.permission.POST_NOTIFICATIONS)
-                } else {
-                    vm.permisoRespondido(true)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            TarjetaPermiso(
+                permiso = permiso,
+                alPedirPermiso = {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        lanzador.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    } else {
+                        vm.permisoRespondido(true)
+                    }
                 }
-            }
-        )
+            )
+            TarjetaAvisos(alMostrarAviso = vm::avisarAhora)
+        }
     }
 }
 
@@ -123,13 +135,28 @@ private fun TarjetaPermiso(
     }
 }
 
-/*
-
-val contexto = LocalContext.current
-LaunchedEffect(Unit) {
-    vm.eventos.collect { aviso ->
-        val mostrado = Notificador.mostrar(contexto, aviso)
-// TODO Paso 8: si no se mostró, avisar al ViewModel
+@Composable
+private fun TarjetaAvisos(alMostrarAviso: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = "Avisos",
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.titleSmall
+            )
+            Button(
+                onClick = alMostrarAviso,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            ) {
+                Text("Mostrar aviso")
+            }
+        }
     }
 }
-*/
