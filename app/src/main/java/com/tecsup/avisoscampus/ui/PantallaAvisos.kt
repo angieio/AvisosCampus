@@ -44,6 +44,7 @@ import com.tecsup.avisoscampus.R
 import com.tecsup.avisoscampus.data.AvisosRepositoryMemoria
 import com.tecsup.avisoscampus.model.PermisoUi
 import com.tecsup.avisoscampus.notificacion.Notificador
+import com.tecsup.avisoscampus.receiver.CargadorReceiver
 import com.tecsup.avisoscampus.receiver.ModoAvionReceiver
 import com.tecsup.avisoscampus.viewmodel.AvisosViewModel
 import com.tecsup.avisoscampus.viewmodel.AvisosViewModelFactory
@@ -59,6 +60,7 @@ fun PantallaAvisos() {
     val mensaje by vm.mensaje.collectAsState()
     val faltan by vm.faltan.collectAsState()
     val escuchando by vm.escuchandoAvion.collectAsState()
+    val escuchandoCargador by vm.escuchandoCargador.collectAsState()
 
     val lanzador = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -87,6 +89,25 @@ fun PantallaAvisos() {
                 contexto,
                 receptor,
                 IntentFilter(Intent.ACTION_AIRPLANE_MODE_CHANGED),
+                ContextCompat.RECEIVER_NOT_EXPORTED
+            )
+            onDispose { contexto.unregisterReceiver(receptor) }
+        } else {
+            onDispose { }
+        }
+    }
+
+    DisposableEffect(escuchandoCargador) {
+        if (escuchandoCargador) {
+            val receptor = CargadorReceiver { conectado -> vm.alCambiarCargador(conectado) }
+            val filtro = IntentFilter().apply {
+                addAction(Intent.ACTION_POWER_CONNECTED)
+                addAction(Intent.ACTION_POWER_DISCONNECTED)
+            }
+            ContextCompat.registerReceiver(
+                contexto,
+                receptor,
+                filtro,
                 ContextCompat.RECEIVER_NOT_EXPORTED
             )
             onDispose { contexto.unregisterReceiver(receptor) }
@@ -139,6 +160,7 @@ fun PantallaAvisos() {
             )
             TarjetaAvisos(alMostrarAviso = vm::avisarAhora)
             TarjetaReceptor(escuchando = escuchando, alCambiar = vm::cambiarEscucha)
+            TarjetaReceptorCargador(escuchando = escuchandoCargador, alCambiar = vm::cambiarEscuchaCargador)
             HistorialAvisos(avisos)
         }
     }
@@ -267,6 +289,31 @@ private fun TarjetaReceptor(escuchando: Boolean, alCambiar: (Boolean) -> Unit) {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text("Escuchar el modo avión", modifier = Modifier.weight(1f))
+                Switch(checked = escuchando, onCheckedChange = alCambiar)
+            }
+        }
+    }
+}
+
+@Composable
+private fun TarjetaReceptorCargador(escuchando: Boolean, alCambiar: (Boolean) -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+            Text(
+                text = "Receptor del cargador",
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.titleSmall
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Escuchar el estado del cargador", modifier = Modifier.weight(1f))
                 Switch(checked = escuchando, onCheckedChange = alCambiar)
             }
         }
